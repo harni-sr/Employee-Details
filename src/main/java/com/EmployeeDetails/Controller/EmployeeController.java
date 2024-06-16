@@ -25,7 +25,7 @@ public class EmployeeController {
         public ResponseEntity<Response> updateJson(@PathVariable Integer id, @RequestBody @Valid Employee employee) {
                return service.updateJson(id,employee);
         }
-        @GetMapping("/save/{id}")
+        @GetMapping(value="/save/{id}")
         public Optional<Employee> getById(@PathVariable Integer id){
              return service.getById(id);
         }

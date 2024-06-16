@@ -4,6 +4,8 @@ import com.EmployeeDetails.Entity.Employee;
 import com.EmployeeDetails.Reository.RepositoryDb;
 import com.EmployeeDetails.Response.Response;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
@@ -41,40 +43,50 @@ public class EmployeeService {
 //        }
     }
     public ResponseEntity<Response> updateJson(Integer id, Employee employee) {
-        Employee updatedEmployee = new Employee();
-        updatedEmployee.setId(id);
-        updatedEmployee.setName(employee.getName());
-        updatedEmployee.setSalary(employee.getSalary());
-        updatedEmployee.setDept(employee.getDept());
-        updatedEmployee.setEmail(employee.getEmail());
-        Employee emp = repo.save(updatedEmployee);
+        if(repo.findById(id).isPresent()) {
+            Employee updatedEmployee = new Employee();
+            updatedEmployee.setId(id);
+            updatedEmployee.setName(employee.getName());
+            updatedEmployee.setSalary(employee.getSalary());
+            updatedEmployee.setDept(employee.getDept());
+            updatedEmployee.setEmail(employee.getEmail());
+            Employee emp = repo.save(updatedEmployee);
 
+            Response response = new Response();
+            response.setId(updatedEmployee.getId());
+            response.setName(updatedEmployee.getName());
+            response.setStatus("Updated");
+
+            if (response.getStatus().equals("Updated")) {
+                return new ResponseEntity<>(response, HttpStatus.CREATED);
+            } else {
+                response.setStatus("Not saved");
+                return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+            }
+        }
         Response response = new Response();
-        response.setId(updatedEmployee.getId());
-        response.setName(updatedEmployee.getName());
-        response.setStatus("Updated");
+        response.setId(id);
+        response.setName(null);
+        response.setStatus("Id: "+id+" doesn't exists.");
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
 
-        if(response.getStatus().equals("Updated")){
-            return new ResponseEntity<>(response, HttpStatus.CREATED);
+    }
+
+    @Cacheable(value = "employees", key = "#id")
+    public Optional<Employee> getById(Integer id) {
+        if (repo.findById(id).isPresent()) {
+            return repo.findById(id);
         }
         return null;
-//        else{
-//            response.setStatus("Not saved");
-//            return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
-//        }
-    }
-    //@Cacheable(value = "employees", key = "#id")
-    public Optional<Employee> getById(Integer id){
-        return repo.findById(id);
     }
 
 
-//    @Cacheable(value = "employees")
+    @Cacheable(value = "employees")
     public List<Employee> getAll(){
         return (repo.findAll());
     }
 
-//    @CacheEvict(value = "employees", key = "#items.id")
+    @CacheEvict(value = "employees", key = "#items.id")
     public String deleteById(Integer id){
        if(repo.findById(id).isPresent()) {
            repo.deleteById(id);
@@ -83,7 +95,7 @@ public class EmployeeService {
            return new String("Employee with id:"+id+ " doesn't exist");
        }
 
-//    @CacheEvict(value = "employees",allEntries = true)
+    @CacheEvict(value = "employees",allEntries = true)
     public String deleteEmployees(){
         repo.deleteAll();
         return "Deleted";
